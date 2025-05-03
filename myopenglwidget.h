@@ -26,15 +26,19 @@ protected:
     void initializeGL() override;
     void resizeGL(int w, int h) override;
     void paintGL() override;
+    void timerEvent(QTimerEvent *event);
 
 private:
     QOpenGLShaderProgram *shaderProgram;
     QOpenGLBuffer vertexBuffer;
     QOpenGLBuffer colorBuffer;
 
-    QMatrix4x4 model;
     glm::mat4 view;
     glm::mat4 projection;
+
+    float rotationX;
+    float rotationY;
+    float rotationZ;
 };
 
 #endif // MYOPENGLWIDGET_H

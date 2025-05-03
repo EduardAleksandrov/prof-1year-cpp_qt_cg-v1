@@ -3,7 +3,8 @@
 #include <QDebug>
 
 MyOpenGLWidget::MyOpenGLWidget(QWidget *parent)
-    : QOpenGLWidget(parent), vertexBuffer(QOpenGLBuffer::VertexBuffer), colorBuffer(QOpenGLBuffer::VertexBuffer)
+    : QOpenGLWidget(parent), vertexBuffer(QOpenGLBuffer::VertexBuffer), colorBuffer(QOpenGLBuffer::VertexBuffer),
+      rotationX(0.0f), rotationY(0.0f), rotationZ(0.0f)
 {
 }
 
@@ -48,19 +49,6 @@ void MyOpenGLWidget::initializeGL()
         0.5f, 0.5f, 0.5f  // Vertex 7 (серый)
     };
 
-//    GLfloat vertices[] = {
-//        // Позиции          // Цвета
-//        -0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, // Vertex 0 (красный)
-//         0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, // Vertex 1 (зеленый)
-//         0.5f,  0.5f, -0.5f, 0.0f, 0.0f, 1.0f, // Vertex 2 (синий)
-//        -0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 0.0f, // Vertex 3 (желтый)
-//        -0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 1.0f, // Vertex 4 (пурпурный)
-//         0.5f, -0.5f,  0.5f, 0.0f, 1.0f, 1.0f, // Vertex 5 (циановый)
-//         0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, // Vertex 6 (белый)
-//        -0.5f,  0.5f,  0.5f, 0.5f, 0.5f, 0.5f  // Vertex 7 (серый)
-//    };
-
-    // Create and bind the vertex buffer
     // Create and bind the vertex buffer
     if (!vertexBuffer.create()) {
         qDebug() << "Failed to create vertex buffer.";
@@ -84,10 +72,11 @@ void MyOpenGLWidget::initializeGL()
         layout(location = 0) in vec3 position;
         layout(location = 1) in vec3 color; // Цвет
         out vec3 fragColor; // Передаем цвет во фрагментный шейдер
+        uniform mat4 model;
         uniform mat4 view;
         uniform mat4 projection;
         void main() {
-            gl_Position =  projection * view * vec4(position, 1.0);
+            gl_Position =  projection * view * model * vec4(position, 1.0);
             fragColor = color; // Передаем цвет
         }
     )"); // vec3 для 3d
@@ -140,6 +129,9 @@ void MyOpenGLWidget::initializeGL()
     qDebug() << "OpenGL Version:" << (const char*)glGetString(GL_VERSION);
     qDebug() << "GLSL Version:" << (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
 
+    // таймер для вращения
+    startTimer(16); // Запускает таймер с интервалом 16 мс (примерно 60 FPS)
+
     // Clean up
     vertexShader->deleteLater();
     fragmentShader->deleteLater();
@@ -173,6 +165,17 @@ void MyOpenGLWidget::paintGL()
         // Pass the projection matrix to the shader
         int projLoc = shaderProgram->uniformLocation("projection");
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        // Создание матрицы модели
+        glm::mat4 model = glm::mat4(1.0f); // Инициализация единичной матрицы
+        model = glm::rotate(model, glm::radians(rotationX), glm::vec3(1.0f, 0.0f, 0.0f)); // Вращение вокруг оси X
+        model = glm::rotate(model, glm::radians(rotationY), glm::vec3(0.0f, 1.0f, 0.0f)); // Вращение вокруг оси Y
+        model = glm::rotate(model, glm::radians(rotationZ), glm::vec3(0.0f, 0.0f, 1.0f)); // Вращение вокруг оси Z
+
+        // Передача матрицы модели в шейдер
+        int modelLoc = shaderProgram->uniformLocation("model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
     } else {
         qDebug() << "Shader program is not valid!";
         return;
@@ -227,4 +230,11 @@ void MyOpenGLWidget::paintGL()
     colorBuffer.release(); // Release the color buffer
     shaderProgram->release(); // Release the shader program
 
+}
+
+void MyOpenGLWidget::timerEvent(QTimerEvent *event)
+{
+    rotationX += 1.0f; // Увеличьте угол вращения по оси X
+    rotationY += 1.0f; // Увеличьте угол вращения по оси Y
+    update(); // Перерисуйте виджет, вызывает paintGl
 }
