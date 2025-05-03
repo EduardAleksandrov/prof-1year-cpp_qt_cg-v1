@@ -1,0 +1,19 @@
+/build
+build
+/install
+install
+*.o
+
+# conan
+build-conan
+
+# Editor directories and files
+.idea
+.vscode
+
+# local env files
+.env.local
+.env.*.local
+
+# other
+
