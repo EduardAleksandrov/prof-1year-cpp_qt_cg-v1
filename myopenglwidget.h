@@ -8,6 +8,10 @@
 #include <QOpenGLShaderProgram>
 #include <QOpenGLBuffer>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 class MyOpenGLWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
     Q_OBJECT
@@ -15,6 +19,8 @@ class MyOpenGLWidget : public QOpenGLWidget, protected QOpenGLFunctions
 public:
     MyOpenGLWidget(QWidget *parent = nullptr);
     ~MyOpenGLWidget();
+    QString mat4ToString(const glm::mat4& matrix);
+
 
 protected:
     void initializeGL() override;
@@ -24,6 +30,10 @@ protected:
 private:
     QOpenGLShaderProgram *shaderProgram;
     QOpenGLBuffer vertexBuffer;
+
+    QMatrix4x4 model;
+    glm::mat4 view;
+    glm::mat4 projection;
 };
 
 #endif // MYOPENGLWIDGET_H

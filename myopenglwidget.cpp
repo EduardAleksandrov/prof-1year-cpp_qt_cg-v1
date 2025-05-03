@@ -22,9 +22,15 @@ void MyOpenGLWidget::initializeGL()
 
     // Define the vertices of the triangle
     GLfloat vertices[] = {
-        0.0f,  0.5f, 0.0f,  // Vertex 1 (X, Y) Bottom left
-       -0.5f, -0.5f, 0.0f,  // Vertex 2 (X, Y) Bottom right
-        0.5f, -0.5f, 0.0f   // Vertex 3 (X, Y) Top
+        // Positions
+        -0.5f, -0.5f, -0.5f, // Vertex 0
+         0.5f, -0.5f, -0.5f, // Vertex 1
+         0.5f,  0.5f, -0.5f, // Vertex 2
+        -0.5f,  0.5f, -0.5f, // Vertex 3
+        -0.5f, -0.5f,  0.5f, // Vertex 4
+         0.5f, -0.5f,  0.5f, // Vertex 5
+         0.5f,  0.5f,  0.5f, // Vertex 6
+        -0.5f,  0.5f,  0.5f  // Vertex 7
     };
 
     // Create and bind the vertex buffer
@@ -40,9 +46,11 @@ void MyOpenGLWidget::initializeGL()
     QOpenGLShader *vertexShader = new QOpenGLShader(QOpenGLShader::Vertex);
     vertexShader->compileSourceCode(R"(
         #version 330 core
-        layout(location = 0) in vec2 position;
+        layout(location = 0) in vec3 position;
+        uniform mat4 view;
+        uniform mat4 projection;
         void main() {
-            gl_Position = vec4(position, 0.0, 1.0);
+            gl_Position = projection * view * vec4(position, 1.0);
         }
     )"); // vec3 для 3d
 
@@ -70,6 +78,21 @@ void MyOpenGLWidget::initializeGL()
     shaderProgram->addShader(fragmentShader);
     shaderProgram->link();
 
+    // Set up the view matrix
+    view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 3.0f), // Camera position
+        glm::vec3(0.0f, 0.0f, 0.0f), // Look at the origin
+        glm::vec3(1.0f, 1.0f, 0.0f)  // Up vector
+    );
+
+    // Set up the projection matrix
+    projection = glm::perspective(
+        glm::radians(45.0f), // Field of view in degrees
+        (float)width() / (float)height(), // Aspect ratio
+        0.1f, // Near plane
+        100.0f // Far plane
+    );
+
     if (!shaderProgram->log().isEmpty()) {
         qDebug() << "Shader Program Error:" << shaderProgram->log();
     }
@@ -87,6 +110,14 @@ void MyOpenGLWidget::resizeGL(int w, int h)
 {
     if (h == 0) h = 1; // Prevent division by zero
     glViewport(0, 0, w, h); // Set the viewport to cover the new window
+
+    // Update the projection matrix on resize
+    projection = glm::perspective(
+        glm::radians(45.0f), // Field of view in degrees
+        (float)w / (float)h, // Aspect ratio
+        0.1f, // Near plane
+        100.0f // Far plane
+    );
 }
 
 void MyOpenGLWidget::paintGL()
@@ -95,6 +126,14 @@ void MyOpenGLWidget::paintGL()
     glClear(GL_COLOR_BUFFER_BIT); // Clear the color buffer
     if (shaderProgram) {
         shaderProgram->bind(); // Bind the shader program
+
+        // Pass the view matrix to the shader
+        int viewLoc = shaderProgram->uniformLocation("view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+        // Pass the projection matrix to the shader
+        int projLoc = shaderProgram->uniformLocation("projection");
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
     } else {
         qDebug() << "Shader program is not valid!";
         return;
@@ -105,11 +144,38 @@ void MyOpenGLWidget::paintGL()
     // Enable the vertex attribute array for the position
     shaderProgram->enableAttributeArray(vertexLocation);
     // Specify the format of the vertex data
-    shaderProgram->setAttributeBuffer(vertexLocation, GL_FLOAT, 0, 2);
+    shaderProgram->setAttributeBuffer(vertexLocation, GL_FLOAT, 0, 3);
 
-    // Draw the triangle
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    // Define the indices for the cube's faces
+    GLuint indices[] = {
+        // Front face
+        0, 1, 2, 2, 3, 0,
+        // Back face
+        4, 5, 6, 6, 7, 4,
+        // Left face
+        0, 3, 7, 7, 4, 0,
+        // Right face
+        1, 5, 6, 6, 2, 1,
+        // Top face
+        3, 2, 6, 6, 7, 3,
+        // Bottom face
+        0, 1, 5, 5, 4, 0
+    };
 
+    // Create an index buffer
+    QOpenGLBuffer indexBuffer(QOpenGLBuffer::IndexBuffer);
+    if (!indexBuffer.create()) {
+        qDebug() << "Failed to create index buffer.";
+        return;
+    }
+    indexBuffer.bind();
+    indexBuffer.allocate(indices, sizeof(indices));
+
+    // Draw the cube using the index buffer
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+
+    // Clean up
+    indexBuffer.release();
     shaderProgram->disableAttributeArray(vertexLocation);
     vertexBuffer.release(); // Release the vertex buffer
     shaderProgram->release(); // Release the shader program
