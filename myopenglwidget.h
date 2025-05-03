@@ -30,6 +30,7 @@ protected:
 private:
     QOpenGLShaderProgram *shaderProgram;
     QOpenGLBuffer vertexBuffer;
+    QOpenGLBuffer colorBuffer;
 
     QMatrix4x4 model;
     glm::mat4 view;

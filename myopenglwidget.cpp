@@ -3,7 +3,7 @@
 #include <QDebug>
 
 MyOpenGLWidget::MyOpenGLWidget(QWidget *parent)
-    : QOpenGLWidget(parent), vertexBuffer(QOpenGLBuffer::VertexBuffer)
+    : QOpenGLWidget(parent), vertexBuffer(QOpenGLBuffer::VertexBuffer), colorBuffer(QOpenGLBuffer::VertexBuffer)
 {
 }
 
@@ -11,6 +11,7 @@ MyOpenGLWidget::~MyOpenGLWidget()
 {
     makeCurrent();
     vertexBuffer.destroy();
+    colorBuffer.destroy();
     delete shaderProgram;
 }
 
@@ -22,21 +23,31 @@ void MyOpenGLWidget::initializeGL()
 
     // Define the vertices of the triangle
     GLfloat vertices[] = {
-        // Позиции          // Цвета
+        // Позиции
         // Передняя грань
-         0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, // Vertex 0 (красный)
-        -0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 0.0f, // Vertex 1 (зеленый)
-        -0.5f,  0.5f, -0.5f, 0.0f, 0.0f, 1.0f, // Vertex 2 (синий)
-         0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 0.0f, // Vertex 3 (желтый)
+         0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
 
         // Задняя грань
-         0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 1.0f, // Vertex 4 (пурпурный)
-        -0.5f, -0.5f,  0.5f, 0.0f, 1.0f, 1.0f, // Vertex 5 (циановый)
-        -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, // Vertex 6 (белый)
-         0.5f, -0.5f, -0.5f, 0.5f, 0.5f, 0.5f  // Vertex 7 (серый)
-
-        // Вы можете добавить дополнительные цвета для других граней, если хотите
+         0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f
     };
+    GLfloat colors[] = {
+        // Цвета
+        1.0f, 0.0f, 0.0f, // Vertex 0 (красный)
+        0.0f, 1.0f, 0.0f, // Vertex 1 (зеленый)
+        0.0f, 0.0f, 1.0f, // Vertex 2 (синий)
+        1.0f, 1.0f, 0.0f, // Vertex 3 (желтый)
+        1.0f, 0.0f, 1.0f, // Vertex 4 (пурпурный)
+        0.0f, 1.0f, 1.0f, // Vertex 5 (циановый)
+        1.0f, 0.0f, 1.0f, // Vertex 6 (белый)
+        0.5f, 0.5f, 0.5f  // Vertex 7 (серый)
+    };
+
 //    GLfloat vertices[] = {
 //        // Позиции          // Цвета
 //        -0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, // Vertex 0 (красный)
@@ -58,6 +69,14 @@ void MyOpenGLWidget::initializeGL()
     vertexBuffer.bind();
     vertexBuffer.allocate(vertices, sizeof(vertices));
 
+    // Create and bind the color buffer
+    if (!colorBuffer.create()) {
+        qDebug() << "Failed to create color buffer.";
+        return;
+    }
+    colorBuffer.bind();
+    colorBuffer.allocate(colors, sizeof(colors));
+
     // Create and compile the vertex shader
     QOpenGLShader *vertexShader = new QOpenGLShader(QOpenGLShader::Vertex);
     vertexShader->compileSourceCode(R"(
@@ -68,7 +87,7 @@ void MyOpenGLWidget::initializeGL()
         uniform mat4 view;
         uniform mat4 projection;
         void main() {
-            gl_Position = projection * view * vec4(position, 1.0);
+            gl_Position =  projection * view * vec4(position, 1.0);
             fragColor = color; // Передаем цвет
         }
     )"); // vec3 для 3d
@@ -100,7 +119,7 @@ void MyOpenGLWidget::initializeGL()
 
     // Set up the view matrix
     view = glm::lookAt(
-        glm::vec3(0.0f, 0.0f, 4.0f), // Camera position
+        glm::vec3(1.0f, 2.0f, 1.0f), // Camera position
         glm::vec3(0.0f, 0.0f, 0.0f), // Look at the origin
         glm::vec3(0.0f, 1.0f, 0.0f)  // Up vector
     );
@@ -161,30 +180,31 @@ void MyOpenGLWidget::paintGL()
     vertexBuffer.bind();   // Bind the vertex buffer
 
     int vertexLocation = shaderProgram->attributeLocation("position");
-    int colorLocation = shaderProgram->attributeLocation("color"); // Получаем индекс для цвета
 
     // Включаем массив атрибутов для позиции
     shaderProgram->enableAttributeArray(vertexLocation);
     shaderProgram->setAttributeBuffer(vertexLocation, GL_FLOAT, 0, 3); // Позиции
 
-    // Включаем массив атрибутов для цвета
+    // Bind the color buffer
+    colorBuffer.bind();
+    int colorLocation = shaderProgram->attributeLocation("color");
     shaderProgram->enableAttributeArray(colorLocation);
-    shaderProgram->setAttributeBuffer(colorLocation, GL_FLOAT, sizeof(GLfloat) * 3, 3); // Цвета
+    shaderProgram->setAttributeBuffer(colorLocation, GL_FLOAT, 0, 3); // Colors
 
     // Define the indices for the cube's faces
     GLuint indices[] = {
         1, 0, 3, //Front face
         3, 2, 1, //Front face
-//        5, 4, 7, //Back face
-//        7, 6, 5, //Back face
+        5, 4, 7, //Back face
+        7, 6, 5, //Back face
         1, 2, 6, //Left face
         6, 5, 1, //Left face
-//        0, 3, 7, //Right face
-//        7, 4, 0, //Right face
-//        1, 5, 4, //Top face
-//        4, 0, 1, //Top face
-//        2, 6, 7, //Bottom face
-//        7, 3, 2  //Bottom face
+        0, 3, 7, //Right face
+        7, 4, 0, //Right face
+        1, 5, 4, //Top face
+        4, 0, 1, //Top face
+        2, 6, 7, //Bottom face
+        7, 3, 2  //Bottom face
     };
 
     // Create an index buffer
@@ -204,6 +224,7 @@ void MyOpenGLWidget::paintGL()
     shaderProgram->disableAttributeArray(vertexLocation);
     shaderProgram->disableAttributeArray(colorLocation);
     vertexBuffer.release(); // Release the vertex buffer
+    colorBuffer.release(); // Release the color buffer
     shaderProgram->release(); // Release the shader program
 
 }
