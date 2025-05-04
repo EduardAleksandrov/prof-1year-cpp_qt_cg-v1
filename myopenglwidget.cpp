@@ -185,6 +185,14 @@ void MyOpenGLWidget::paintGL()
         int modelLoc = shaderProgram->uniformLocation("model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
+        // Теперь отрисуем второй куб
+        // Создание матрицы модели для второго куба
+        // glm::mat4 model2 = glm::mat4(1.0f); // Инициализация единичной матрицы для второго куба
+        // model2 = glm::translate(model2, glm::vec3(2.0f, 0.0f, 0.0f)); // Перемещение второго куба вправо
+        // Передача матрицы модели во шейдер для второго куба
+        // glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model2));
+        // повторяем весь нижележащий код после try catch
+
         // Установите значение альфа-канала
         float alfaToShader;
         if(alphaValue > 1.0f) alfaToShader = 1.0f;
