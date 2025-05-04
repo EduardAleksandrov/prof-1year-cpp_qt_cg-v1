@@ -22,6 +22,12 @@ void MyOpenGLWidget::initializeGL()
 
     glClearColor(0.1f, 0.1f, 0.4f, 1.0f);
 
+    // Включение глубинного тестирования для непрозрачности .. прозрачные объекты отрисовываются после непрозрачных
+    glEnable(GL_DEPTH_TEST);
+    // Включение смешивания для работы фрагментного шейдера
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Настройка функции смешивания
+
     // Define the vertices of the triangle
     GLfloat vertices[] = {
         // Позиции
@@ -92,7 +98,7 @@ void MyOpenGLWidget::initializeGL()
         in vec3 fragColor; // Получаем цвет из вершинного шейдера
         out vec4 color;
         void main() {
-            color = vec4(fragColor, 1.0); // Устанавливаем цвет
+            color = vec4(fragColor, 0.5); // Устанавливаем цвет
         }
     )");
 
@@ -153,8 +159,8 @@ void MyOpenGLWidget::resizeGL(int w, int h)
 
 void MyOpenGLWidget::paintGL()
 {
-    qDebug() << "launch";
-    glClear(GL_COLOR_BUFFER_BIT); // Clear the color buffer
+    // Очистка экрана и буфера глубины
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear the color buffer
     if (shaderProgram) {
         shaderProgram->bind(); // Bind the shader program
 
