@@ -10,6 +10,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     openglWidget = new MyOpenGLWidget(this);
     setCentralWidget(openglWidget);
+
+    this->statusBar()->hide(); // нижняя белая планка
 }
 
 MainWindow::~MainWindow()
