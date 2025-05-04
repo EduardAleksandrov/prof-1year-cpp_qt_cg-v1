@@ -39,6 +39,9 @@ private:
     float rotationX;
     float rotationY;
     float rotationZ;
+
+    float alphaValue;
+    int indexAlfa;
 };
 
 #endif // MYOPENGLWIDGET_H

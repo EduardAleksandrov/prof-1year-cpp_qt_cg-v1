@@ -4,7 +4,7 @@
 
 MyOpenGLWidget::MyOpenGLWidget(QWidget *parent)
     : QOpenGLWidget(parent), vertexBuffer(QOpenGLBuffer::VertexBuffer), colorBuffer(QOpenGLBuffer::VertexBuffer),
-      rotationX(0.0f), rotationY(0.0f), rotationZ(0.0f)
+      rotationX(0.0f), rotationY(0.0f), rotationZ(0.0f), alphaValue(0.0f), indexAlfa(0)
 {
 }
 
@@ -23,10 +23,12 @@ void MyOpenGLWidget::initializeGL()
     glClearColor(0.1f, 0.1f, 0.4f, 1.0f);
 
     // Включение глубинного тестирования для непрозрачности .. прозрачные объекты отрисовываются после непрозрачных
-    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST); // сначала отрисовывают дальнюю непрозрачную, а потом поверх нее прозрачную
     // Включение смешивания для работы фрагментного шейдера
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Настройка функции смешивания
+
+
 
     // Define the vertices of the triangle
     GLfloat vertices[] = {
@@ -71,7 +73,7 @@ void MyOpenGLWidget::initializeGL()
     colorBuffer.bind();
     colorBuffer.allocate(colors, sizeof(colors));
 
-    // Create and compile the vertex shader
+    // Create and compile the vertex shader  принимает координаты вершины и преобразует их в координаты экрана.
     QOpenGLShader *vertexShader = new QOpenGLShader(QOpenGLShader::Vertex);
     vertexShader->compileSourceCode(R"(
         #version 330 core
@@ -97,8 +99,9 @@ void MyOpenGLWidget::initializeGL()
         #version 330 core
         in vec3 fragColor; // Получаем цвет из вершинного шейдера
         out vec4 color;
+        uniform float alpha;
         void main() {
-            color = vec4(fragColor, 0.5); // Устанавливаем цвет
+            color = vec4(fragColor, alpha); // Устанавливаем цвет
         }
     )");
 
@@ -114,7 +117,7 @@ void MyOpenGLWidget::initializeGL()
 
     // Set up the view matrix
     view = glm::lookAt(
-        glm::vec3(1.0f, 2.0f, 1.0f), // Camera position
+        glm::vec3(0.0f, 1.0f, 3.0f), // Camera position
         glm::vec3(0.0f, 0.0f, 0.0f), // Look at the origin
         glm::vec3(0.0f, 1.0f, 0.0f)  // Up vector
     );
@@ -182,10 +185,18 @@ void MyOpenGLWidget::paintGL()
         int modelLoc = shaderProgram->uniformLocation("model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
+        // Установите значение альфа-канала
+        float alfaToShader;
+        if(alphaValue > 1.0f) alfaToShader = 1.0f;
+        else alfaToShader = alphaValue;
+        int alphaLoc = shaderProgram->uniformLocation("alpha");
+        glUniform1f(alphaLoc, alfaToShader);
+
     } else {
         qDebug() << "Shader program is not valid!";
         return;
     }
+
     vertexBuffer.bind();   // Bind the vertex buffer
 
     int vertexLocation = shaderProgram->attributeLocation("position");
@@ -213,7 +224,8 @@ void MyOpenGLWidget::paintGL()
         1, 5, 4, //Top face
         4, 0, 1, //Top face
         2, 6, 7, //Bottom face
-        7, 3, 2  //Bottom face
+        7, 3, 2 //Bottom face
+
     };
 
     // Create an index buffer
@@ -226,7 +238,10 @@ void MyOpenGLWidget::paintGL()
     indexBuffer.allocate(indices, sizeof(indices));
 
     // Draw the cube using the index buffer
+    if(alphaValue < 0.99f) glDisable(GL_DEPTH_TEST);
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+//    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, (void*)(30* sizeof(GLuint))); // Индексы для прозрачной грани
+    glEnable(GL_DEPTH_TEST);
 
     // Clean up
     indexBuffer.release();
@@ -242,5 +257,15 @@ void MyOpenGLWidget::timerEvent(QTimerEvent *event)
 {
     rotationX += 1.0f; // Увеличьте угол вращения по оси X
     rotationY += 1.0f; // Увеличьте угол вращения по оси Y
+
+    if(indexAlfa == 0)
+    {
+        alphaValue += 0.001f; // Увеличиваем альфа-канал
+        if (alphaValue > 1.2f) indexAlfa = 1;
+    } else {
+        alphaValue -= 0.001f; // Увеличиваем альфа-канал
+        if (alphaValue < 0.0f) indexAlfa = 0;
+    }
+
     update(); // Перерисуйте виджет, вызывает paintGl
 }
