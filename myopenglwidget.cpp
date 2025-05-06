@@ -83,7 +83,7 @@ void MyOpenGLWidget::initializeGL()
         uniform mat4 model;
         uniform mat4 view;
         uniform mat4 projection;
-        void main() {
+        void main() {                  // это основная функция, которая будет выполняться для каждого рабочего элемента (work item) в локальной группе.
             gl_Position =  projection * view * model * vec4(position, 1.0);
             fragColor = color; // Передаем цвет
         }
@@ -200,12 +200,14 @@ void MyOpenGLWidget::paintGL()
         int alphaLoc = shaderProgram->uniformLocation("alpha");
         glUniform1f(alphaLoc, alfaToShader);
 
+        // Эти(view, projection и model) вызовы передают данные из CPU в GPU, чтобы шейдеры могли использовать их при выполнении.
+
     } else {
         qDebug() << "Shader program is not valid!";
         return;
     }
 
-    vertexBuffer.bind();   // Bind the vertex buffer
+    vertexBuffer.bind();   // Bind the vertex buffer Привязка вершинного буфера
 
     int vertexLocation = shaderProgram->attributeLocation("position");
 
@@ -247,7 +249,9 @@ void MyOpenGLWidget::paintGL()
 
     // Draw the cube using the index buffer
     if(alphaValue < 0.99f) glDisable(GL_DEPTH_TEST);
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0); // инициирует выполнение шейдеров
+    // На этом этапе OpenGL начинает выполнять вершинный шейдер для каждой вершины,
+    // а затем фрагментный шейдер для каждого фрагмента (пикселя), который будет отрисован на экране.
 //    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, (void*)(30* sizeof(GLuint))); // Индексы для прозрачной грани
     glEnable(GL_DEPTH_TEST);
 
@@ -255,7 +259,7 @@ void MyOpenGLWidget::paintGL()
     indexBuffer.release();
     shaderProgram->disableAttributeArray(vertexLocation);
     shaderProgram->disableAttributeArray(colorLocation);
-    vertexBuffer.release(); // Release the vertex buffer
+    vertexBuffer.release(); // Release the vertex buffer Отключение, а не удаление
     colorBuffer.release(); // Release the color buffer
     shaderProgram->release(); // Release the shader program
 
